@@ -21,6 +21,11 @@ allprojects {
         mavenCentral()
 
         maven {
+            name = "FabricMC"
+            url = uri("https://maven.fabricmc.net/")
+        }
+
+        maven {
             name = "papermc-repo"
             url = uri("https://repo.papermc.io/repository/maven-public/")
         }

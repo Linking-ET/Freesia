@@ -1,0 +1,15 @@
+{
+    "required": true,
+    "package": "al.qy.mc.freesia_backend_mod.fabric.mixin",
+    "compatibilityLevel": "JAVA_17",
+    "minVersion": "0.8",
+    "client": [
+    ],
+    "mixins": [
+        "ServerEntityMixin",
+        "ServerLevelMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+  }
+}

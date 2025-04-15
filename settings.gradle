@@ -1,5 +1,8 @@
 pluginManagement {
     repositories {
+        maven { url 'https://maven.architectury.dev/' }
+        maven { url 'https://maven.neoforged.net/releases/' }
+        maven { url 'https://maven.minecraftforge.net/' }
         maven {
             name = 'Fabric'
             url = 'https://maven.fabricmc.net/'
@@ -18,3 +21,9 @@ include("Freesia-Velocity")
 include("Freesia-Backend")
 include("Freesia-Common")
 include("Freesia-Worker")
+
+include ':Freesia-Backend-Mod-1.20.1'
+include ':Freesia-Backend-Mod-1.20.1:forge'
+include ':Freesia-Backend-Mod-1.20.1:fabric'
+include ':Freesia-Backend-Mod-1.21.1'
+include ':Freesia-Backend-Mod-1.21.1:fabric'

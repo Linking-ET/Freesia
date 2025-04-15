@@ -1,0 +1,31 @@
+{
+    "schemaVersion": 1,
+    "id": "${mod_id}",
+    "version": "${mod_version}",
+    "name": "Freesia Backend Mod",
+    "description": "",
+    "authors": [
+        "qyl27"
+    ],
+    "contact": {
+    },
+    "license": "ARR",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "al.qy.mc.freesia_backend_mod.fabric.FreesiaBackendModFabric"
+        ],
+        "client": [
+            "al.qy.mc.freesia_backend_mod.fabric.client.FreesiaBackendModFabricClient"
+        ]
+    },
+    "mixins": [
+        "freesia_backend.mixins.json",
+        "freesia_backend-fabric.mixins.json"
+    ],
+    "depends": {
+        "minecraft": "${fabric_minecraft_version_range}",
+        "fabricloader": "${fabric_loader_version_range}",
+        "fabric": "${fabric_api_version_range}"
+    }
+}
