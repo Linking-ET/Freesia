@@ -1,0 +1,22 @@
+architectury {
+    platformSetupLoomIde()
+    fabric()
+}
+
+def root = project(':Freesia-Backend-Mod-1.21.1')
+
+dependencies {
+    modImplementation "net.fabricmc:fabric-loader:${root.fabric_loader_version}"
+    modApi "net.fabricmc.fabric-api:fabric-api:${root.fabric_api_version}"
+
+    runtimeOnly "com.moandjiezana.toml:toml4j:0.7.2"
+    modRuntimeOnly "com.terraformersmc:modmenu:${root.fabric_mod_menu_version}"
+    modRuntimeOnly 'maven.modrinth:fabricproxy-lite:v2.9.0'
+
+    common(project(path: root.path, configuration: 'namedElements')) { transitive false }
+    shadowBundle project(path: root.path, configuration: 'transformProductionFabric')
+}
+
+remapJar {
+    injectAccessWidener = true
+}

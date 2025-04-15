@@ -1,0 +1,31 @@
+architectury {
+    platformSetupLoomIde()
+    forge()
+}
+
+def root = project(':Freesia-Backend-Mod-1.20.1')
+
+loom {
+    runs {
+        data {
+            data()
+
+            programArgs '--all', '--mod', 'freesia'
+            programArgs '--output', file('../src/generated/resources').absolutePath
+            programArgs '--existing', file('../src/main/resources').absolutePath
+        }
+    }
+}
+
+dependencies {
+    forge "net.minecraftforge:forge:${root.forge_version}"
+
+    modRuntimeOnly 'maven.modrinth:proxy-compatible-forge:K43ePlgq'
+
+    common(project(path: root.path, configuration: 'namedElements')) { transitive false }
+    shadowBundle project(path: root.path, configuration: 'transformProductionForge')
+}
+
+remapJar {
+    atAccessWideners.add(loom.accessWidenerPath.get().asFile.name)
+}
