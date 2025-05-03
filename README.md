@@ -1,3 +1,8 @@
+# 注意
+这是原Freesia项目的一个fork,由于该项目上的更改过于定制化且已经不适用于原freesia项目,故创建了改fork
+
+README原文:
+
 # 香雪兰 Freesia
 
 [![Issues](https://img.shields.io/github/issues/KikirMeow/Freesia?style=flat-square)](https://github.com/KikirMeow/Freesia/issues)
