@@ -281,8 +281,8 @@ public class YsmMapperPayloadManager {
         final MapperSessionProcessor mapperSession = this.mapperSessions.get(player);
 
         if (mapperSession == null) {
-            // Shouldn't be happened
-            throw new IllegalStateException("???");
+            //race condition: already disconnected
+            return;
         }
 
         mapperSession.onBackendReady();
