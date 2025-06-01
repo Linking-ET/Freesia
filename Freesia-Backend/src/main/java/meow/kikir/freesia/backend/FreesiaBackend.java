@@ -25,6 +25,10 @@ public final class FreesiaBackend extends JavaPlugin {
 
 
         Bukkit.getPluginManager().registerEvents(this.trackerProcessor, this);
+
+//        virtualPlayerManager.setVirtualPlayerData()
+
+
     }
 
     public VirtualPlayerManager getVirtualPlayerManager() {

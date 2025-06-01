@@ -25,7 +25,7 @@ public class VirtualPlayerManager implements PluginMessageListener, Listener {
     @Override
     public void onPluginMessageReceived(@NotNull String channel, @NotNull Player sender, byte @NotNull [] data) {
         if (!channel.equals(CHANNEL_NAME)) {
-            return;
+            return; 
         }
 
         final FriendlyByteBuf packetBuffer = new FriendlyByteBuf(Unpooled.wrappedBuffer(data));
@@ -42,7 +42,7 @@ public class VirtualPlayerManager implements PluginMessageListener, Listener {
                 return;
             }
 
-            FreesiaBackend.INSTANCE.getSLF4JLogger().warn("Received unknown callback for virtual player operations {}", eventId);
+            FreesiaBackend.INSTANCE.getLogger().warning("Received unknown callback for virtual player operations " + eventId);
         }
     }
 
