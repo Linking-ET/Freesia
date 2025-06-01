@@ -7,6 +7,8 @@ import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.velocitypowered.api.proxy.Player;
 import io.netty.buffer.Unpooled;
 import meow.kikir.freesia.velocity.Freesia;
+import meow.kikir.freesia.velocity.FreesiaConstants;
+import meow.kikir.freesia.velocity.YsmProtocolMetaFile;
 import meow.kikir.freesia.velocity.network.mc.NbtRemapper;
 import meow.kikir.freesia.velocity.network.mc.impl.StandardNbtRemapperImpl;
 import meow.kikir.freesia.velocity.utils.FriendlyByteBuf;
@@ -243,6 +245,22 @@ public abstract class YsmPacketProxyLayer implements YsmPacketProxy{
     }
 
     public abstract CompletableFuture<Set<UUID>> fetchTrackerList(UUID observer);
+
+    @Override
+    public void executeMolang(String expression) {
+        final int playerEntityId = (int) PLAYER_ENTITY_ID_HANDLE.getVolatile(this);
+
+        if (playerEntityId == -1 || this.player == null) {
+            return;
+        }
+
+        final FriendlyByteBuf wrappedPacketData = new FriendlyByteBuf(Unpooled.buffer());
+        wrappedPacketData.writeByte(YsmProtocolMetaFile.getS2CPacketId(FreesiaConstants.YsmProtocolMetaConstants.Clientbound.MOLANG_EXECUTE));
+        wrappedPacketData.writeVarIntArray(new int[]{playerEntityId}); // Write the entity id
+        wrappedPacketData.writeUtf(expression); // Write the expression
+
+        this.sendPluginMessageToOwner(YsmMapperPayloadManager.YSM_CHANNEL_KEY_VELOCITY, wrappedPacketData);
+    }
 
     protected void sendEntityStateToRaw(@NotNull UUID receiverUUID, int entityId, NBTCompound data) {
         try {

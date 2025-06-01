@@ -3,6 +3,7 @@ package meow.kikir.freesia.velocity.network.ysm;
 import com.github.retrooper.packetevents.protocol.nbt.NBTCompound;
 import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.proxy.Player;
+import io.netty.buffer.Unpooled;
 import meow.kikir.freesia.velocity.FreesiaConstants;
 import meow.kikir.freesia.velocity.Freesia;
 import meow.kikir.freesia.velocity.YsmProtocolMetaFile;
@@ -11,7 +12,11 @@ import meow.kikir.freesia.velocity.events.PlayerEntityStateChangeEvent;
 import meow.kikir.freesia.velocity.utils.FriendlyByteBuf;
 import io.netty.buffer.ByteBuf;
 import net.kyori.adventure.key.Key;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -66,6 +71,27 @@ public class RealPlayerYsmPacketProxyImpl extends YsmPacketProxyLayer{
             Freesia.LOGGER.info("Replying ysm client with server version {}.Can switch model? : {}", backendVersion, canSwitchModel);
 
             return ProxyComputeResult.ofPass();
+        }
+
+        if (packetId == YsmProtocolMetaFile.getS2CPacketId(FreesiaConstants.YsmProtocolMetaConstants.Clientbound.MOLANG_EXECUTE)) {
+            final int[] entityIds = mcBuffer.readVarIntArray();
+            final String expression = mcBuffer.readUtf();
+
+            final Map<Integer, RealPlayerYsmPacketProxyImpl> collectedPaddingWorkerEntityId = Freesia.mapperManager.collectRealProxyPaddingWorkerEntityId();
+
+            // Alright , we need to split the packets to simplify the logics
+            for (int singleWorkerEntityId : entityIds) {
+                final RealPlayerYsmPacketProxyImpl targetProxy = collectedPaddingWorkerEntityId.get(singleWorkerEntityId);
+
+                // not matched to any player
+                if (targetProxy == null) {
+                    continue;
+                }
+
+                targetProxy.executeMolang(expression);
+            }
+
+            return ProxyComputeResult.ofDrop();
         }
 
         return ProxyComputeResult.ofPass();

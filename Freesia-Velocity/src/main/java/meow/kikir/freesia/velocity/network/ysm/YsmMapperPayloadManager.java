@@ -226,6 +226,26 @@ public class YsmMapperPayloadManager {
         connection.destroyAndAwaitDisconnected();
     }
 
+    public Map<Integer, RealPlayerYsmPacketProxyImpl> collectRealProxyPaddingWorkerEntityId() {
+        final Map<Integer, RealPlayerYsmPacketProxyImpl> result = Maps.newHashMap();
+        final Collection<MapperSessionProcessor> copied = new ArrayList<>(this.mapperSessions.values());
+
+        for (MapperSessionProcessor session : copied) {
+            final YsmPacketProxy packetProxy = session.getPacketProxy();
+
+            if (packetProxy instanceof RealPlayerYsmPacketProxyImpl realPlayerProxy) {
+                final int playerEntityId = realPlayerProxy.getPlayerEntityId();
+                final int workerEntityId = realPlayerProxy.getPlayerWorkerEntityId();
+
+                if (playerEntityId != -1 && workerEntityId != -1) { // check if it's ready
+                    result.put(workerEntityId, realPlayerProxy);
+                }
+            }
+        }
+
+        return result;
+    }
+
     public void autoCreateMapper(Player player) {
         this.createMapperSession(player, Objects.requireNonNull(this.selectLessPlayer()));
     }

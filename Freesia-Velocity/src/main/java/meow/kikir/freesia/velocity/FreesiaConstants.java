@@ -65,6 +65,8 @@ public class FreesiaConstants {
             public static final String HAND_SHAKE_CONFIRMED = "handshake_confirmed";
 
             public static final String ENTITY_DATA_UPDATE = "entity_data_update";
+
+            public static final String MOLANG_EXECUTE = "molang_execute";
         }
     }
 }
