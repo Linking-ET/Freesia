@@ -81,15 +81,10 @@ public abstract class YsmPacketProxyLayer implements YsmPacketProxy{
 
             final int curr = (int) ENTITY_DATA_REF_COUNT_HANDLE.getVolatile(this);
 
-            // Reading operations are not finished
-            if (curr > 0) {
+            // Reading or another writing operations are not finished
+            if (curr > 0 || curr == -1) {
                 failureCount++;
                 continue;
-            }
-
-            // Should not be happened because we are just calling entity data update in a single thread
-            if (curr == -1) {
-                throw new IllegalStateException("Write lock is already held by another thread!");
             }
 
             // Another thread is acquiring write or read reference
