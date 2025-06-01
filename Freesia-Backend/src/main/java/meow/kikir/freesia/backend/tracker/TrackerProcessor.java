@@ -13,6 +13,8 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,8 +29,8 @@ public class TrackerProcessor implements PluginMessageListener, Listener {
         final Player watcher = trackEvent.getPlayer();
         final Entity beingWatched = trackEvent.getEntity();
 
-        if (beingWatched instanceof Player beingWatchedPlayer) {
-            this.playerTrackedPlayer(beingWatchedPlayer, watcher);
+        if (beingWatched instanceof Player) {
+            this.playerTrackedPlayer((Player) beingWatched, watcher);
         }
     }
 
@@ -36,9 +38,55 @@ public class TrackerProcessor implements PluginMessageListener, Listener {
     // That's because there is no player respawn event on folia but folia's respawn logic will fire it when performing a respawn
     @EventHandler
     public void onPlayerAddedToWorld(@NotNull EntityAddToWorldEvent event) {
-        if (event.getEntity() instanceof Player player) {
-            this.playerTrackedPlayer(player, player);
+        if (event.getEntity() instanceof Player) {
+            this.playerTrackedPlayer((Player) event.getEntity(), (Player) event.getEntity());
         }
+    }
+
+    @EventHandler
+    public void onMove(PlayerMoveEvent event){
+        if (event.getFrom().getBlockX() == event.getTo().getBlockX() &&
+                event.getFrom().getBlockZ() == event.getTo().getBlockZ()) {
+            return;
+        }
+        Bukkit.getScheduler().runTaskLater(
+                FreesiaBackend.INSTANCE,
+                () -> {
+                    final Set<Player> result = new HashSet<>();
+
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        if (player.canSee(event.getPlayer())) {
+                            result.add(player);
+                        }
+                    }
+                    for (Player player : result) {
+                        this.playerTrackedPlayer(event.getPlayer(),player);
+                        this.playerTrackedPlayer(player,event.getPlayer());
+                    }
+                },
+                5L
+        );
+    }
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event){
+
+        Bukkit.getScheduler().runTaskLater(
+                FreesiaBackend.INSTANCE,
+                () -> {
+                    final Set<Player> result = new HashSet<>();
+
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        if (player.canSee(event.getPlayer())) {
+                            result.add(player);
+                        }
+                    }
+                    for (Player player : result) {
+                        this.playerTrackedPlayer(event.getPlayer(),player);
+                        this.playerTrackedPlayer(player,event.getPlayer());
+                    }
+                },
+                20L
+        );
     }
 
     private void playerTrackedPlayer(@NotNull Player beSeen, @NotNull Player seeing) {
@@ -93,26 +141,21 @@ public class TrackerProcessor implements PluginMessageListener, Listener {
             final CyanidinTrackerScanEvent trackerScanEvent = new CyanidinTrackerScanEvent(result, toScan);
 
             // We need to schedule back to pass the dumb async catchers as it was firing from both netty threads and main threads
-            sender.getScheduler().execute(
-                    FreesiaBackend.INSTANCE,
-                    () -> {
-                        Bukkit.getPluginManager().callEvent(trackerScanEvent);
+            Bukkit.getScheduler().runTaskLater(FreesiaBackend.INSTANCE, () -> {
+                Bukkit.getPluginManager().callEvent(trackerScanEvent);
 
-                        final FriendlyByteBuf reply = new FriendlyByteBuf(Unpooled.buffer());
+                final FriendlyByteBuf reply = new FriendlyByteBuf(Unpooled.buffer());
 
-                        reply.writeVarInt(0);
-                        reply.writeVarInt(callbackId);
-                        reply.writeVarInt(result.size());
+                reply.writeVarInt(0);
+                reply.writeVarInt(callbackId);
+                reply.writeVarInt(result.size());
 
-                        for (UUID uuid : result) {
-                            reply.writeUUID(uuid);
-                        }
+                for (UUID uuid : result) {
+                    reply.writeUUID(uuid);
+                }
 
-                        sender.sendPluginMessage(FreesiaBackend.INSTANCE, CHANNEL_NAME, reply.getBytes());
-                    },
-                    null,
-                    1
-            );
+                sender.sendPluginMessage(FreesiaBackend.INSTANCE, CHANNEL_NAME, reply.getBytes());
+            },10);
         }
     }
 

@@ -43,7 +43,7 @@ public class VirtualPlayerManager {
             final FriendlyByteBuf packetData = new FriendlyByteBuf(Unpooled.wrappedBuffer(event.getData()));
 
             switch (packetData.readByte()) {
-                case 0 -> { // Create virtual player packet
+                case 0 -> { // 创建虚拟玩家包
                     final int eventId = packetData.readVarInt();
                     final int entityId = packetData.readVarInt();
                     final UUID virtualPlayerUUID = packetData.readUUID();
@@ -67,7 +67,7 @@ public class VirtualPlayerManager {
                     });
                 }
 
-                case 1 -> { // Remove virtual player packet
+                case 1 -> { // 移除虚拟玩家包
                     final int eventId = packetData.readVarInt();
                     final UUID virtualPlayerUUID = packetData.readUUID();
 

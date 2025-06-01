@@ -4,6 +4,11 @@ plugins {
     id("org.jetbrains.gradle.plugin.idea-ext") version "1.0.1"
     id("io.github.goooler.shadow") version "8.1.2"
 }
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(11)) // 强制使用 Java 8 编译
+    }
+}
 
 group = "meow.kikir"
 version = project.version
@@ -31,6 +36,11 @@ allprojects {
         }
 
         maven {
+            name = "spigot-repo"
+            url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
+        }
+
+        maven {
             name = "opencollab"
             url = uri("https://repo.opencollab.dev/maven-releases/")
         }
@@ -39,6 +49,7 @@ allprojects {
             name = "opencollab-snapshot"
             url = uri("https://repo.opencollab.dev/maven-snapshots/")
         }
+
 
         maven {
             name = "sonatype"
