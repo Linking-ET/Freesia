@@ -8,6 +8,8 @@ dependencies {
     implementation("com.electronwill.night-config:toml:3.6.6")
     implementation("org.geysermc.mcprotocollib:protocol:1.21-SNAPSHOT")
     implementation("ca.spottedleaf:concurrentutil:0.0.3")
+//    implementation("com.github.retrooper:packetevents-velocity:2.5.0")
+
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
 }
 

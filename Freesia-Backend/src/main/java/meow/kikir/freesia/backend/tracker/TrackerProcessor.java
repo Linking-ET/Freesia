@@ -1,15 +1,11 @@
 package meow.kikir.freesia.backend.tracker;
 
-import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 import io.netty.buffer.Unpooled;
-import io.papermc.paper.event.player.PlayerTrackEntityEvent;
 import meow.kikir.freesia.backend.FreesiaBackend;
 import meow.kikir.freesia.backend.Utils;
-import meow.kikir.freesia.backend.event.CyanidinRealPlayerTrackerUpdateEvent;
 import meow.kikir.freesia.backend.event.CyanidinTrackerScanEvent;
 import meow.kikir.freesia.backend.utils.FriendlyByteBuf;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -18,30 +14,33 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 public class TrackerProcessor implements PluginMessageListener, Listener {
     public static final String CHANNEL_NAME = "freesia:tracker_sync";
 
     // The default tracker event which is provided by Paper
-    @EventHandler
-    public void onPlayerTrackEntity(@NotNull PlayerTrackEntityEvent trackEvent) {
-        final Player watcher = trackEvent.getPlayer();
-        final Entity beingWatched = trackEvent.getEntity();
-
-        if (beingWatched instanceof Player) {
-            this.playerTrackedPlayer((Player) beingWatched, watcher);
-        }
-    }
+//    @EventHandler
+//    public void onPlayerTrackEntity(@NotNull PlayerTrackEntityEvent trackEvent) {
+//        final Player watcher = trackEvent.getPlayer();
+//        final Entity beingWatched = trackEvent.getEntity();
+//
+//        if (beingWatched instanceof Player) {
+//            this.playerTrackedPlayer((Player) beingWatched, watcher);
+//        }
+//    }
 
     // We can use this event to track when a player is added to the world
     // That's because there is no player respawn event on folia but folia's respawn logic will fire it when performing a respawn
-    @EventHandler
-    public void onPlayerAddedToWorld(@NotNull EntityAddToWorldEvent event) {
-        if (event.getEntity() instanceof Player) {
-            this.playerTrackedPlayer((Player) event.getEntity(), (Player) event.getEntity());
-        }
-    }
+//    @EventHandler
+//    public void onPlayerAddedToWorld(@NotNull EntityAddToWorldEvent event) {
+//        if (event.getEntity() instanceof Player) {
+//            this.playerTrackedPlayer((Player) event.getEntity(), (Player) event.getEntity());
+//        }
+//    }
 
     @EventHandler
     public void onMove(PlayerMoveEvent event){
@@ -63,6 +62,10 @@ public class TrackerProcessor implements PluginMessageListener, Listener {
                         this.playerTrackedPlayer(event.getPlayer(),player);
                         this.playerTrackedPlayer(player,event.getPlayer());
                     }
+                    for (UUID uuid : FreesiaBackend.INSTANCE.uuids) {
+                        notifyTrackerUpdate(event.getPlayer().getUniqueId(), uuid);
+                    }
+
                 },
                 5L
         );
@@ -84,16 +87,20 @@ public class TrackerProcessor implements PluginMessageListener, Listener {
                         this.playerTrackedPlayer(event.getPlayer(),player);
                         this.playerTrackedPlayer(player,event.getPlayer());
                     }
-                },
+                    for (UUID uuid : FreesiaBackend.INSTANCE.uuids) {
+                        notifyTrackerUpdate(event.getPlayer().getUniqueId(), uuid);
+                    }
+
+                    },
                 20L
         );
     }
 
     private void playerTrackedPlayer(@NotNull Player beSeen, @NotNull Player seeing) {
         // Fire tracker update events
-        if (!new CyanidinRealPlayerTrackerUpdateEvent(seeing, beSeen).callEvent()) {
-            return;
-        }
+//        if (!new CyanidinRealPlayerTrackerUpdateEvent(seeing, beSeen).callEvent()) {
+//            return;
+//        }
 
         // The true tracker update caller
         this.notifyTrackerUpdate(seeing.getUniqueId(), beSeen.getUniqueId());
@@ -137,6 +144,8 @@ public class TrackerProcessor implements PluginMessageListener, Listener {
                     result.add(player.getUniqueId());
                 }
             }
+            result.addAll(FreesiaBackend.INSTANCE.uuids);
+
 
             final CyanidinTrackerScanEvent trackerScanEvent = new CyanidinTrackerScanEvent(result, toScan);
 

@@ -5,3 +5,5 @@ api-version: '1.16'
 softdepend:
   - Citizens
 folia-supported: true
+commands:
+  fr:

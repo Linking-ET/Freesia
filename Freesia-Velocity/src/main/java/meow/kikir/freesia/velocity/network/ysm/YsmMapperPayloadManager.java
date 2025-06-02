@@ -43,10 +43,12 @@ public class YsmMapperPayloadManager {
     // Player to worker mappers connections
     private final Map<Player, MapperSessionProcessor> mapperSessions = Maps.newConcurrentMap();
 
+    private final Function<Player, YsmPacketProxy> packetProxyCreator;
+
+
     // Backend connect infos
     private final ReadWriteLock backendIpsAccessLock = new ReentrantReadWriteLock(false);
     private final Map<InetSocketAddress, Integer> backend2Players = Maps.newLinkedHashMap();
-    private final Function<Player, YsmPacketProxy> packetProxyCreator;
 
     // The players who installed ysm(Used for packet sending reduction)
     private final Set<UUID> ysmInstalledPlayers = Sets.newConcurrentHashSet();
@@ -65,7 +67,7 @@ public class YsmMapperPayloadManager {
         final MapperSessionProcessor mapper = this.mapperSessions.get(target);
 
         if (mapper == null) {
-            return;
+            throw new IllegalStateException("Mapper not created yet!");
         }
 
         mapper.getPacketProxy().setPlayerWorkerEntityId(entityId);
@@ -75,7 +77,7 @@ public class YsmMapperPayloadManager {
         final MapperSessionProcessor mapper = this.mapperSessions.get(target);
 
         if (mapper == null) {
-            return;
+            throw new IllegalStateException("Mapper not created yet!");
         }
 
         mapper.getPacketProxy().setPlayerEntityId(entityId);
@@ -151,6 +153,8 @@ public class YsmMapperPayloadManager {
                 }
 
                 if (data == null) {
+                    createdVirtualProxy.setPlayerEntityId(playerEntityId);
+                    createdVirtualProxy.setPlayerWorkerEntityId(0);
                     callback.complete(true);
                     return;
                 }
@@ -160,7 +164,8 @@ public class YsmMapperPayloadManager {
                     final NBTCompound read = (NBTCompound) serializer.deserializeTag(NBTLimiter.forBuffer(data, Integer.MAX_VALUE), new DataInputStream(new ByteArrayInputStream(data)), true);
 
                     createdVirtualProxy.setEntityDataRaw(read);
-                    createdVirtualProxy.setPlayerEntityId(playerEntityId); // Will fired tracker update when entity id changed
+                    createdVirtualProxy.setPlayerEntityId(playerEntityId);
+                    createdVirtualProxy.setPlayerWorkerEntityId(0);
                 } catch (Exception ex1) {
                     callback.completeExceptionally(ex1);
                     return;
