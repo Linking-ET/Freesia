@@ -45,6 +45,9 @@ public class YsmMapperPayloadManager {
     // Real player proxy factory
     private final Function<Player, YsmPacketProxy> packetProxyCreator;
 
+    private final Function<Player, YsmPacketProxy> packetProxyCreator;
+
+
     // Backend connect infos
     private final ReadWriteLock backendIpsAccessLock = new ReentrantReadWriteLock(false);
     private final Map<InetSocketAddress, Integer> backend2Players = Maps.newLinkedHashMap();
