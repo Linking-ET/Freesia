@@ -75,22 +75,26 @@ public class RealPlayerYsmPacketProxyImpl extends YsmPacketProxyLayer{
 
         if (packetId == YsmProtocolMetaFile.getS2CPacketId(FreesiaConstants.YsmProtocolMetaConstants.Clientbound.MOLANG_EXECUTE)) {
             final int[] entityIds = mcBuffer.readVarIntArray();
+            final int[] entityIdsRemapped = new int[entityIds.length];
             final String expression = mcBuffer.readUtf();
 
-            final Map<Integer, RealPlayerYsmPacketProxyImpl> collectedPaddingWorkerEntityId = Freesia.mapperManager.collectRealProxyPaddingWorkerEntityId();
+            final Map<Integer, RealPlayerYsmPacketProxyImpl> collectedPaddingWorkerEntityId = Freesia.mapperManager.collectRealProxy2WorkerEntityId();
 
-            // Alright , we need to split the packets to simplify the logics
+            // remap the entity id
+            int idx = 0;
             for (int singleWorkerEntityId : entityIds) {
                 final RealPlayerYsmPacketProxyImpl targetProxy = collectedPaddingWorkerEntityId.get(singleWorkerEntityId);
 
-                // not matched to any player
                 if (targetProxy == null) {
                     continue;
                 }
 
-                targetProxy.executeMolang(expression);
+                entityIdsRemapped[idx] = targetProxy.getPlayerEntityId(); // we are on backend side
+                idx++;
             }
 
+            // re-send packet as it's much cheaper than modify
+            this.executeMolang(entityIdsRemapped, expression);
             return ProxyComputeResult.ofDrop();
         }
 
@@ -112,6 +116,20 @@ public class RealPlayerYsmPacketProxyImpl extends YsmPacketProxyLayer{
             final String clientYsmVersion = mcBuffer.readUtf();
             Freesia.LOGGER.info("Player {} is connected to the backend with ysm version {}", this.player.getUsername(), clientYsmVersion);
             Freesia.mapperManager.onClientYsmHandshakePacketReply(this.player);
+        }
+
+        if (packetId == YsmProtocolMetaFile.getC2SPacketId(FreesiaConstants.YsmProtocolMetaConstants.Serverbound.MOLANG_EXECUTE_REQ)) {
+            final String molangExpression = mcBuffer.readUtf();
+            final int entityId = mcBuffer.readVarInt();
+            final int currWorkerEntityId = this.getPlayerWorkerEntityId();
+
+            if (currWorkerEntityId != -1) {
+                final FriendlyByteBuf newPacketByteBuf = new FriendlyByteBuf(Unpooled.buffer());
+                newPacketByteBuf.writeByte(YsmProtocolMetaFile.getC2SPacketId(FreesiaConstants.YsmProtocolMetaConstants.Serverbound.MOLANG_EXECUTE_REQ));
+                newPacketByteBuf.writeUtf(molangExpression);
+                newPacketByteBuf.writeVarInt(currWorkerEntityId);
+                return ProxyComputeResult.ofModify(newPacketByteBuf);
+            }
         }
 
         return ProxyComputeResult.ofPass();

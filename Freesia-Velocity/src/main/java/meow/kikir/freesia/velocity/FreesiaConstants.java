@@ -58,6 +58,7 @@ public class FreesiaConstants {
         // C -> S
         public static final class Serverbound {
             public static final String HAND_SHAKE_REQUEST = "handshake_request";
+            public static final String MOLANG_EXECUTE_REQ = "molang_execute_req";
         }
 
         // S -> C

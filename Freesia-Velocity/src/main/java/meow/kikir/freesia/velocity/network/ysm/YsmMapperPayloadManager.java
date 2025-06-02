@@ -226,13 +226,16 @@ public class YsmMapperPayloadManager {
         connection.destroyAndAwaitDisconnected();
     }
 
-    public Map<Integer, RealPlayerYsmPacketProxyImpl> collectRealProxyPaddingWorkerEntityId() {
-        final Map<Integer, RealPlayerYsmPacketProxyImpl> result = Maps.newHashMap();
+    public Map<Integer, RealPlayerYsmPacketProxyImpl> collectRealProxy2WorkerEntityId() {
+        final Map<Integer, RealPlayerYsmPacketProxyImpl> result = Maps.newLinkedHashMap();
+
+        // Here we act likes a COWList
         final Collection<MapperSessionProcessor> copied = new ArrayList<>(this.mapperSessions.values());
 
         for (MapperSessionProcessor session : copied) {
             final YsmPacketProxy packetProxy = session.getPacketProxy();
 
+            // If it's real player
             if (packetProxy instanceof RealPlayerYsmPacketProxyImpl realPlayerProxy) {
                 final int playerEntityId = realPlayerProxy.getPlayerEntityId();
                 final int workerEntityId = realPlayerProxy.getPlayerWorkerEntityId();

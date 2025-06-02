@@ -262,6 +262,20 @@ public abstract class YsmPacketProxyLayer implements YsmPacketProxy{
         this.sendPluginMessageToOwner(YsmMapperPayloadManager.YSM_CHANNEL_KEY_VELOCITY, wrappedPacketData);
     }
 
+    @Override
+    public void executeMolang(int[] entityIds, String expression) {
+        if (this.player == null) {
+            return;
+        }
+
+        final FriendlyByteBuf wrappedPacketData = new FriendlyByteBuf(Unpooled.buffer());
+        wrappedPacketData.writeByte(YsmProtocolMetaFile.getS2CPacketId(FreesiaConstants.YsmProtocolMetaConstants.Clientbound.MOLANG_EXECUTE));
+        wrappedPacketData.writeVarIntArray(entityIds); // Write the entity id
+        wrappedPacketData.writeUtf(expression); // Write the expression
+
+        this.sendPluginMessageToOwner(YsmMapperPayloadManager.YSM_CHANNEL_KEY_VELOCITY, wrappedPacketData);
+    }
+
     protected void sendEntityStateToRaw(@NotNull UUID receiverUUID, int entityId, NBTCompound data) {
         try {
             final Optional<Player> queryResult = Freesia.PROXY_SERVER.getPlayer(receiverUUID);
