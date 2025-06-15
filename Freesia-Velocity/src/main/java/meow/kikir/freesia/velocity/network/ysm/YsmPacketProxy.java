@@ -6,20 +6,26 @@ import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import io.netty.buffer.ByteBuf;
 import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 
 public interface YsmPacketProxy {
+    default void setParentHandler(MapperSessionProcessor processor){
+        // No-op by default
+    }
+
     ProxyComputeResult processS2C(Key channelKey, ByteBuf copiedPacketData);
 
     ProxyComputeResult processC2S(Key channelKey, ByteBuf copiedPacketData);
 
+    @Nullable
     Player getOwner();
 
     void sendEntityStateTo(@NotNull Player target);
 
     void setEntityDataRaw(NBTCompound data);
 
-    void refreshToOthers();
+    void notifyFullTrackerUpdates();
 
     NBTCompound getCurrentEntityState();
 
@@ -31,7 +37,17 @@ public interface YsmPacketProxy {
 
     int getPlayerWorkerEntityId();
 
+    default void executeMolang(String expression) {}
+
+    default void executeMolang(int[] entityIds, String expression) {}
+
     default void sendPluginMessageToOwner(@NotNull MinecraftChannelIdentifier channel, byte[] data){
+        final Player owner = this.getOwner();
+
+        if (owner == null) {
+            throw new UnsupportedOperationException();
+        }
+
         this.sendPluginMessageTo(this.getOwner(), channel, data);
     }
 

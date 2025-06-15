@@ -27,7 +27,6 @@ import java.io.DataOutputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
@@ -43,14 +42,15 @@ public class YsmMapperPayloadManager {
 
     // Player to worker mappers connections
     private final Map<Player, MapperSessionProcessor> mapperSessions = Maps.newConcurrentMap();
+    // Real player proxy factory
+    private final Function<Player, YsmPacketProxy> packetProxyCreator;
 
     // Backend connect infos
     private final ReadWriteLock backendIpsAccessLock = new ReentrantReadWriteLock(false);
     private final Map<InetSocketAddress, Integer> backend2Players = Maps.newLinkedHashMap();
-    private final Function<Player, YsmPacketProxy> packetProxyCreator;
 
     // The players who installed ysm(Used for packet sending reduction)
-    private final Set<Player> ysmInstalledPlayers = Sets.newConcurrentHashSet();
+    private final Set<UUID> ysmInstalledPlayers = Sets.newConcurrentHashSet();
 
     public YsmMapperPayloadManager(Function<Player, YsmPacketProxy> packetProxyCreator, Function<UUID, YsmPacketProxy> packetProxyCreatorVirtual) {
         this.packetProxyCreator = packetProxyCreator;
@@ -58,19 +58,15 @@ public class YsmMapperPayloadManager {
         this.backend2Players.put(FreesiaConfig.workerMSessionAddress, 1); //TODO Load balance
     }
 
-    public void onClientYsmHandshakePacketReply(Player target) {
-        if (this.ysmInstalledPlayers.contains(target)) {
-            return;
-        }
-
-        this.ysmInstalledPlayers.add(target);
+    public void onClientYsmHandshakePacketReply(@NotNull Player target) {
+        this.ysmInstalledPlayers.add(target.getUniqueId());
     }
 
     public void updateWorkerPlayerEntityId(Player target, int entityId){
         final MapperSessionProcessor mapper = this.mapperSessions.get(target);
 
         if (mapper == null) {
-            return;
+            throw new IllegalStateException("Mapper not created yet!");
         }
 
         mapper.getPacketProxy().setPlayerWorkerEntityId(entityId);
@@ -80,7 +76,7 @@ public class YsmMapperPayloadManager {
         final MapperSessionProcessor mapper = this.mapperSessions.get(target);
 
         if (mapper == null) {
-            return;
+            throw new IllegalStateException("Mapper not created yet!");
         }
 
         mapper.getPacketProxy().setPlayerEntityId(entityId);
@@ -98,7 +94,7 @@ public class YsmMapperPayloadManager {
         }
 
         virtualProxy.setEntityDataRaw(nbt);
-        virtualProxy.refreshToOthers();
+        virtualProxy.notifyFullTrackerUpdates();
 
         final NBTCompound entityData = virtualProxy.getCurrentEntityState();
 
@@ -156,6 +152,8 @@ public class YsmMapperPayloadManager {
                 }
 
                 if (data == null) {
+                    createdVirtualProxy.setPlayerEntityId(playerEntityId);
+                    createdVirtualProxy.setPlayerWorkerEntityId(0);
                     callback.complete(true);
                     return;
                 }
@@ -165,7 +163,8 @@ public class YsmMapperPayloadManager {
                     final NBTCompound read = (NBTCompound) serializer.deserializeTag(NBTLimiter.forBuffer(data, Integer.MAX_VALUE), new DataInputStream(new ByteArrayInputStream(data)), true);
 
                     createdVirtualProxy.setEntityDataRaw(read);
-                    createdVirtualProxy.setPlayerEntityId(playerEntityId); // Will fired tracker update when entity id changed
+                    createdVirtualProxy.setPlayerEntityId(playerEntityId);
+                    createdVirtualProxy.setPlayerWorkerEntityId(0);
                 } catch (Exception ex1) {
                     callback.completeExceptionally(ex1);
                     return;
@@ -222,55 +221,71 @@ public class YsmMapperPayloadManager {
         return callback;
     }
 
-    public void reconnectWorker(@NotNull Player master, @NotNull InetSocketAddress target) {
-        final MapperSessionProcessor currentMapper = this.mapperSessions.get(master);
+    private void disconnectMapperWithoutKickingMaster(@NotNull MapperSessionProcessor connection) {
+        connection.setKickMasterWhenDisconnect(false);
+        connection.destroyAndAwaitDisconnected();
+    }
 
-        if (currentMapper == null) {
-            throw new IllegalStateException("Player is not connected to mapper!");
+    public Map<Integer, RealPlayerYsmPacketProxyImpl> collectRealProxy2WorkerEntityId() {
+        final Map<Integer, RealPlayerYsmPacketProxyImpl> result = Maps.newLinkedHashMap();
+
+        // Here we act likes a COWList
+        final Collection<MapperSessionProcessor> copied = new ArrayList<>(this.mapperSessions.values());
+
+        for (MapperSessionProcessor session : copied) {
+            final YsmPacketProxy packetProxy = session.getPacketProxy();
+
+            // If it's real player
+            if (packetProxy instanceof RealPlayerYsmPacketProxyImpl realPlayerProxy) {
+                final int playerEntityId = realPlayerProxy.getPlayerEntityId();
+                final int workerEntityId = realPlayerProxy.getPlayerWorkerEntityId();
+
+                if (playerEntityId != -1 && workerEntityId != -1) { // check if it's ready
+                    result.put(workerEntityId, realPlayerProxy);
+                }
+            }
         }
 
-        currentMapper.setKickMasterWhenDisconnect(false);
-        currentMapper.getSession().disconnect("RECONNECT");
-        currentMapper.waitForDisconnected();
-
-        this.createMapperSession(master, target);
+        return result;
     }
 
-    public void reconnectWorker(@NotNull Player master) {
-        this.reconnectWorker(master, Objects.requireNonNull(this.selectLessPlayer()));
-    }
-
-    public boolean hasPlayer(@NotNull Player player) {
-        return this.mapperSessions.containsKey(player);
-    }
-
-    public void firstCreateMapper(Player player) {
+    public void autoCreateMapper(Player player) {
         this.createMapperSession(player, Objects.requireNonNull(this.selectLessPlayer()));
     }
 
-    public boolean isPlayerInstalledYsm(Player target) {
+    public boolean isPlayerInstalledYsm(@NotNull Player target) {
+        return this.ysmInstalledPlayers.contains(target.getUniqueId());
+    }
+
+    public boolean isPlayerInstalledYsm(UUID target) {
         return this.ysmInstalledPlayers.contains(target);
     }
 
-    public void onPlayerDisconnect(Player player) {
-        this.ysmInstalledPlayers.remove(player);
+    public void onPlayerDisconnect(@NotNull Player player) {
+        this.ysmInstalledPlayers.remove(player.getUniqueId());
 
         final MapperSessionProcessor mapperSession = this.mapperSessions.remove(player);
 
         if (mapperSession != null) {
-            mapperSession.setKickMasterWhenDisconnect(false); // Player already offline, so we don't disconnect again
-            mapperSession.getSession().disconnect("PLAYER DISCONNECTED");
-            mapperSession.waitForDisconnected();
+            this.disconnectMapperWithoutKickingMaster(mapperSession);
         }
     }
 
-    protected void onWorkerSessionDisconnect(@NotNull MapperSessionProcessor mapperSession, boolean kickMaster, Component reason) {
+    protected void onWorkerSessionDisconnect(@NotNull MapperSessionProcessor mapperSession, boolean kickMaster, @Nullable Component reason) {
+        // Kick the master it binds
         if (kickMaster)
-            mapperSession.getBindPlayer().disconnect(Freesia.languageManager.i18n(FreesiaConstants.LanguageConstants.WORKER_TERMINATED_CONNECTION, List.of("reason"), List.of(reason)));
+            mapperSession.getBindPlayer().disconnect(Freesia.languageManager.i18n(
+                    FreesiaConstants.LanguageConstants.WORKER_TERMINATED_CONNECTION,
+                    List.of("reason"),
+                    List.of(reason == null ? Component.text("DISCONNECTED MANUAL") : reason)
+            ));
+
+        // Remove from list
         this.mapperSessions.remove(mapperSession.getBindPlayer());
     }
 
     public void onPluginMessageIn(@NotNull Player player, @NotNull MinecraftChannelIdentifier channel, byte[] packetData) {
+        // Check if it is the message of ysm
         if (!channel.equals(YSM_CHANNEL_KEY_VELOCITY)) {
             return;
         }
@@ -278,6 +293,7 @@ public class YsmMapperPayloadManager {
         final MapperSessionProcessor mapperSession = this.mapperSessions.get(player);
 
         if (mapperSession == null) {
+            // Actually it shouldn't be and never be happened
             throw new IllegalStateException("Mapper session not found or ready for player " + player.getUsername());
         }
 
@@ -288,14 +304,43 @@ public class YsmMapperPayloadManager {
         final MapperSessionProcessor mapperSession = this.mapperSessions.get(player);
 
         if (mapperSession == null) {
-            // Shouldn't be happened
-            throw new IllegalStateException("???");
+            //race condition: already disconnected
+            return;
         }
 
         mapperSession.onBackendReady();
     }
 
+    public boolean disconnectAlreadyConnected(Player player) {
+        final MapperSessionProcessor current = this.mapperSessions.get(player);
+
+        // Not exists or created
+        if (current == null) {
+            return false;
+        }
+
+        // Will do remove in the callback
+        this.disconnectMapperWithoutKickingMaster(current);
+        return true;
+    }
+
+    public void initMapperPacketProcessor(@NotNull Player player) {
+        final MapperSessionProcessor possiblyExisting = this.mapperSessions.get(player);
+
+        if (possiblyExisting != null) {
+            throw new IllegalStateException("Mapper session already exists for player " + player.getUsername());
+        }
+
+        final YsmPacketProxy packetProxy = this.packetProxyCreator.apply(player);
+        final MapperSessionProcessor processor = new MapperSessionProcessor(player, packetProxy, this);
+
+        packetProxy.setParentHandler(processor);
+
+        this.mapperSessions.put(player, processor);
+    }
+
     public void createMapperSession(@NotNull Player player, @NotNull InetSocketAddress backend) {
+        // Instance new session
         final TcpClientSession mapperSession = new TcpClientSession(
                 backend.getHostName(),
                 backend.getPort(),
@@ -307,21 +352,23 @@ public class YsmMapperPayloadManager {
                 )
         );
 
-        final MapperSessionProcessor packetProcessor = new MapperSessionProcessor(player, this.packetProxyCreator.apply(player), this);
+        // Our packet processor for packet forwarding
+        final MapperSessionProcessor packetProcessor = this.mapperSessions.get(player);
 
+        if (packetProcessor == null) {
+            // Should be created in ServerPreConnectEvent
+            throw new IllegalStateException("Mapper session not found or ready for player " + player.getUsername());
+        }
+
+        packetProcessor.setSession(mapperSession);
         mapperSession.addListener(packetProcessor);
 
+        // Default as Minecraft client
         mapperSession.setFlag(BuiltinFlags.READ_TIMEOUT,30_000);
         mapperSession.setFlag(BuiltinFlags.WRITE_TIMEOUT,30_000);
 
-        this.mapperSessions.put(player, packetProcessor); // Add to the mappers
-
         // Do connect
         mapperSession.connect(true,false);
-    }
-
-    public void onProxyLoggedin(Player player, MapperSessionProcessor packetProcessor, TcpClientSession session){
-        // TODO : Are we still using this callback ?
     }
 
     public void onVirtualPlayerTrackerUpdate(UUID owner, Player watcher) {
@@ -344,11 +391,17 @@ public class YsmMapperPayloadManager {
         // so as the result, we could simply pass it down directly
         if (mapperSession == null) {
             // Should not be happened
-            throw new IllegalStateException("???");
+            // We use random player as the payload of custom payload of freesia tracker, so there is a possibility
+            // that race condition would happen between the disconnect logic and tracker update logic
+            //throw new IllegalStateException("???");
+            return;
         }
 
-        if (this.isPlayerInstalledYsm(watcher)) {
-            mapperSession.getPacketProxy().sendEntityStateTo(watcher);
+        if (this.isPlayerInstalledYsm(watcher)) { // Skip players who don't install ysm
+            // Check if ready
+            if (!mapperSession.queueTrackerUpdate(watcher.getUniqueId())) {
+                mapperSession.getPacketProxy().sendEntityStateTo(watcher);
+            }
         }
     }
 
