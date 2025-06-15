@@ -140,9 +140,6 @@ public class Freesia implements PacketListener {
         return EventTask.async(() -> {
             this.logger.info("Initiating mapper session for player {}", targetPlayer.getUsername());
 
-            // Create mapper session
-            mapperManager.autoCreateMapper(targetPlayer);
-
             // Add to client kicker
             kickChecker.onPlayerJoin(targetPlayer);
         });
@@ -163,7 +160,10 @@ public class Freesia implements PacketListener {
             }
 
             // Re init after removed or init on first connected
-            mapperManager.initMapperPacketProcessor(event.getPlayer());
+            mapperManager.initMapperPacketProcessor(player);
+
+            // Create or re-create mapper session
+            mapperManager.autoCreateMapper(player);
         });
     }
 
