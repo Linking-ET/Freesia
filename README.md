@@ -1,7 +1,10 @@
-# 注意
-这是原Freesia项目的一个fork,由于该项目上的更改过于定制化且已经不适用于原freesia项目,故创建了改fork
+# ***注意***
+> 此分支于 [MrHua269的优化改进fork](https://github.com/ChamomileBaka/Freesia) 与 [秋雨落的模组后端fork](https://github.com/qyl27/Freesia) 合并而来，兼容了以模组为主的群组服而不致使服主们选用混合端，更为定制化，可能会时不时同步上游更新
+> > 这是原Freesia项目的一个优化改进fork,由于[该项目](https://github.com/ChamomileBaka/Freesia)上的更改过于定制化且已经不适用于原freesia项目,故创建了该fork
+>
+> *"说什么都至少署名下原作者吧喂"*
 
-README原文:
+*以下为README原文:*
 
 # 香雪兰 Freesia
 
@@ -17,7 +20,7 @@ Cyanidin的延续版（正在施工中）
 这个项目曾叫做Cyanidin，但原所有者MrHua269放弃了它，据他本人描述，他并不想在ysm这个混乱的社区里继续做第三方开发了，这个项目只是在给他徒增压力，他不想再继续维护了，我有天在minebbs看到了他的接坑帖子，便找他把项目要了过来，并改名为Freesia香雪兰，且现在也成为了YSM的官方项目之一。
 
 # 文档
-请参见 [YSM 文档](https://ysm.cfpa.team/wiki/freesia-plugin/)的此处。
+请参见 [YSM 文档](https://ysm.cfpa.team/wiki/freesia-plugin/) 的此处。
 
 # 构建
 
