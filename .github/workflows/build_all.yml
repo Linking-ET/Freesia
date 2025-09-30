@@ -23,9 +23,9 @@ jobs:
       - name: Build projects
         run: chmod 777 gradlew && ./gradlew generateTemplates && ./gradlew build
       - name: Copy built jar
-        run: mkdir build_out && cp Freesia-Velocity/build/libs/*.jar ./build_out && cp Freesia-Worker/build/libs/*.jar ./build_out && cp Freesia-Backend/build/libs/*.jar ./build_out && cp Freesia-Backend-Mod-1.20.1/build/libs/*.jar ./build_out/1.20.1/ && cp Freesia-Backend-Mod-1.21.1/build/libs/*.jar ./build_out/1.21.1/
+        run: rsync -avR ./Freesia-*/build/libs/*.jar ./build_out/
       - name: Upload Artifact
         uses: "actions/upload-artifact@v4"
         with:
           name: "${{ env.project_id_b }} CI Artifacts"
-          path: "build_out/*.jar"
+          path: "build_out/**.jar"
